@@ -1,5 +1,5 @@
 {
-    "name": "Exp1",
+    "name": "sleep_edf20_exp1",
     "n_gpu": 1,
 
     "arch": {
@@ -23,7 +23,8 @@
     },
     "loss": "weighted_CrossEntropyLoss",
     "metrics": [
-        "accuracy"
+        "accuracy",
+        "f1"
     ],
     "trainer": {
         "epochs": 100,
