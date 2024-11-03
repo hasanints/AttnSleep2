@@ -147,17 +147,11 @@ class BaseTrainer:
         filename = str(self.checkpoint_dir / 'checkpoint-epoch{}.pth'.format(epoch))
         torch.save(state, filename)
         self.logger.info("Saving checkpoint: {} ...".format(filename))
-
-        # Menyimpan model ke WandB
-        wandb.save(filename)
-
         if save_best:
             best_path = str(self.checkpoint_dir / 'model_best.pth')
             torch.save(state, best_path)
             self.logger.info("Saving current best: model_best.pth ...")
-            wandb.save(best_path)
 
-            
     def _resume_checkpoint(self, resume_path):
         """
         Resume from saved checkpoints

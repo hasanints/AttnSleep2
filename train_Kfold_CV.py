@@ -1,7 +1,6 @@
 import argparse
 import collections
 import numpy as np
-import wandb  # Import wandb
 
 from data_loader.data_loaders import *
 import model.loss as module_loss
@@ -33,46 +32,36 @@ def weights_init_normal(m):
 
 
 def main(config, fold_id):
-    # Inisialisasi Weights & Biases
-    wandb.init(
-        project="your_project_name",  # Ganti dengan nama proyek Anda di W&B
-        config=config,  # wandb akan merekam konfigurasi dari file config.json
-        name=f"Fold_{fold_id}",  # Nama run berdasarkan fold
-    )
-
     batch_size = config["data_loader"]["args"]["batch_size"]
+
     logger = config.get_logger('train')
-    
-    # Model setup
+
+    # build model architecture, initialize weights, then print to console
     model = config.init_obj('arch', module_arch)
     model.apply(weights_init_normal)
     logger.info(model)
 
-    # Loss and metrics setup
+    # get function handles of loss and metrics
     criterion = getattr(module_loss, config['loss'])
     metrics = [getattr(module_metric, met) for met in config['metrics']]
 
-    # Optimizer setup
+    # build optimizer
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
+
     optimizer = config.init_obj('optimizer', torch.optim, trainable_params)
 
-    # Data loader setup
     data_loader, valid_data_loader, data_count = data_generator_np(folds_data[fold_id][0],
                                                                    folds_data[fold_id][1], batch_size)
-    
-    # Training setup
+    weights_for_each_class = calc_class_weight(data_count)
+
     trainer = Trainer(model, criterion, metrics, optimizer,
                       config=config,
                       data_loader=data_loader,
                       fold_id=fold_id,
                       valid_data_loader=valid_data_loader,
-                      class_weights=None)
+                      class_weights=weights_for_each_class)
 
-    # Start training
     trainer.train()
-    
-    # Menyelesaikan wandb setelah training selesai
-    wandb.finish()
 
 
 if __name__ == '__main__':
@@ -102,3 +91,4 @@ if __name__ == '__main__':
         folds_data = load_folds_data(args2.np_data_dir, config["data_loader"]["args"]["num_folds"])
 
     main(config, fold_id)
+

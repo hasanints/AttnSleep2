@@ -55,10 +55,6 @@ class Trainer(BaseTrainer):
             for met in self.metric_ftns:
                 self.train_metrics.update(met.__name__, met(output, target))
 
-        # WandB Logging untuk metrik pada training
-        for metric, value in self.train_metrics.result().items():
-            wandb.log({f"train_{metric}": value, "epoch": epoch})
-
             if batch_idx % self.log_step == 0:
                 self.logger.debug('Train Epoch: {} {} Loss: {:.6f} '.format(
                     epoch,
@@ -85,7 +81,6 @@ class Trainer(BaseTrainer):
             if epoch == 10:
                 for g in self.lr_scheduler.param_groups:
                     g['lr'] = 0.0001
-    
 
         return log, overall_outs, overall_trgs
 
@@ -104,19 +99,17 @@ class Trainer(BaseTrainer):
             for batch_idx, (data, target) in enumerate(self.valid_data_loader):
                 data, target = data.to(self.device), target.to(self.device)
                 output = self.model(data)
-                loss = self.criterion(output, target, self.class_weights) if self.class_weights else self.criterion(output, target)
+                loss = self.criterion(output, target, self.class_weights, self.device)
 
                 self.valid_metrics.update('loss', loss.item())
                 for met in self.metric_ftns:
                     self.valid_metrics.update(met.__name__, met(output, target))
 
                 preds_ = output.data.max(1, keepdim=True)[1].cpu()
+
                 outs = np.append(outs, preds_.cpu().numpy())
                 trgs = np.append(trgs, target.data.cpu().numpy())
 
-        # WandB Logging untuk metrik pada validasi
-        for metric, value in self.valid_metrics.result().items():
-            wandb.log({f"val_{metric}": value, "epoch": epoch})
 
         return self.valid_metrics.result(), outs, trgs
 
