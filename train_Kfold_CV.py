@@ -32,21 +32,23 @@ def weights_init_normal(m):
         torch.nn.init.constant_(m.bias.data, 0.0)
 
 
-def objective(trial, config, fold_id):
+def objective(trial, config, fold_id, folds_data):
     """
     Objective function untuk Optuna yang mengoptimalkan kombinasi hyperparameter.
     """
 
-    # Perbarui penggunaan suggest_float dengan log=True
+    # Hyperparameter tuning
     lr = trial.suggest_float('lr', 1e-5, 1e-3, log=True)
     weight_decay = trial.suggest_float('weight_decay', 1e-5, 1e-2, log=True)
 
-    # Hapus baris berikut jika model tidak memiliki argumen `dropout`.
-    # dropout = trial.suggest_float('dropout', 0.1, 0.5)
-
-    # Terapkan hyperparameter yang dihasilkan oleh Optuna
+    # Terapkan hyperparameter yang dihasilkan
     config["optimizer"]["args"]["lr"] = lr
     config["optimizer"]["args"]["weight_decay"] = weight_decay
+
+    # Load data menggunakan folds_data
+    data_loader, valid_data_loader, data_count = data_generator_np(
+        folds_data[fold_id][0], folds_data[fold_id][1], config["data_loader"]["args"]["batch_size"]
+    )
 
     batch_size = config["data_loader"]["args"]["batch_size"]
     logger = config.get_logger('train')
