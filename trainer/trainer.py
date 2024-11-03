@@ -3,6 +3,7 @@ import torch
 from base import BaseTrainer
 from utils import inf_loop, MetricTracker
 import torch.nn as nn
+import wandb
 
 selected_d = {"outs": [], "trg": []}
 class Trainer(BaseTrainer):
@@ -54,6 +55,7 @@ class Trainer(BaseTrainer):
             self.train_metrics.update('loss', loss.item())
             for met in self.metric_ftns:
                 self.train_metrics.update(met.__name__, met(output, target))
+            wandb.log({"train_loss": loss.item()})
 
             if batch_idx % self.log_step == 0:
                 self.logger.debug('Train Epoch: {} {} Loss: {:.6f} '.format(
@@ -65,6 +67,7 @@ class Trainer(BaseTrainer):
             if batch_idx == self.len_epoch:
                 break
         log = self.train_metrics.result()
+        wandb.log(log)
 
         if self.do_validation:
             val_log, outs, trgs = self._valid_epoch(epoch)
@@ -103,7 +106,9 @@ class Trainer(BaseTrainer):
 
                 self.valid_metrics.update('loss', loss.item())
                 for met in self.metric_ftns:
-                    self.valid_metrics.update(met.__name__, met(output, target))
+                    metric_value = met(output, target)
+                    self.valid_metrics.update(met.__name__, metric_value)
+                    wandb.log({f"val_{met.__name__}": metric_value})
 
                 preds_ = output.data.max(1, keepdim=True)[1].cpu()
 
