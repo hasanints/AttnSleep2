@@ -1,5 +1,5 @@
 {
-    "name": "sleep_edf20_adasyn2_exp1",
+    "name": "sleep_edf20_exp2_tuning",
     "n_gpu": 4,
 
     "arch": {
