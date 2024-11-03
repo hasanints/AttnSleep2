@@ -12,6 +12,7 @@ from utils.util import *
 
 import torch
 import torch.nn as nn
+import wandb
 
 # fix random seeds for reproducibility
 SEED = 123
@@ -32,6 +33,21 @@ def weights_init_normal(m):
 
 
 def main(config, fold_id):
+    # Inisialisasi W&B
+    wandb.init(
+        project="nama_proyek_wandb",  # ganti dengan nama proyek
+        config=config._config,        # log seluruh konfigurasi
+        name=f"Fold_{fold_id}"        # beri nama run per fold
+    )
+
+    # Log konfigurasi tambahan ke W&B
+    wandb.config.update({
+        "batch_size": config["data_loader"]["args"]["batch_size"],
+        "epochs": config["trainer"]["epochs"],
+        "fold_id": fold_id,
+    })
+
+    
     batch_size = config["data_loader"]["args"]["batch_size"]
 
     logger = config.get_logger('train')
@@ -62,6 +78,7 @@ def main(config, fold_id):
                       class_weights=weights_for_each_class)
 
     trainer.train()
+    wandb.finish()
 
 
 if __name__ == '__main__':
