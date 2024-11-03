@@ -1,7 +1,7 @@
 import argparse
 import collections
 import numpy as np
-import optuna  
+import wandb  # Import wandb
 
 from data_loader.data_loaders import *
 import model.loss as module_loss
@@ -32,45 +32,35 @@ def weights_init_normal(m):
         torch.nn.init.constant_(m.bias.data, 0.0)
 
 
-def objective(trial, config, fold_id, folds_data):
-    """
-    Objective function untuk Optuna yang mengoptimalkan kombinasi hyperparameter.
-    """
-
-    # Hyperparameter tuning
-    lr = trial.suggest_float('lr', 1e-5, 1e-3, log=True)
-    weight_decay = trial.suggest_float('weight_decay', 1e-5, 1e-2, log=True)
-
-    # Terapkan hyperparameter yang dihasilkan
-    config["optimizer"]["args"]["lr"] = lr
-    config["optimizer"]["args"]["weight_decay"] = weight_decay
-
-    # Load data menggunakan folds_data
-    data_loader, valid_data_loader, data_count = data_generator_np(
-        folds_data[fold_id][0], folds_data[fold_id][1], config["data_loader"]["args"]["batch_size"]
+def main(config, fold_id):
+    # Inisialisasi Weights & Biases
+    wandb.init(
+        project="your_project_name",  # Ganti dengan nama proyek Anda di W&B
+        config=config,  # wandb akan merekam konfigurasi dari file config.json
+        name=f"Fold_{fold_id}",  # Nama run berdasarkan fold
     )
 
     batch_size = config["data_loader"]["args"]["batch_size"]
     logger = config.get_logger('train')
-
-    # Bangun arsitektur model, inisialisasi, dan logging
+    
+    # Model setup
     model = config.init_obj('arch', module_arch)
     model.apply(weights_init_normal)
     logger.info(model)
 
-    # Dapatkan fungsi loss dan metrics
+    # Loss and metrics setup
     criterion = getattr(module_loss, config['loss'])
     metrics = [getattr(module_metric, met) for met in config['metrics']]
 
-    # Bangun optimizer
+    # Optimizer setup
     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
     optimizer = config.init_obj('optimizer', torch.optim, trainable_params)
 
-    # Inisialisasi data loader
+    # Data loader setup
     data_loader, valid_data_loader, data_count = data_generator_np(folds_data[fold_id][0],
                                                                    folds_data[fold_id][1], batch_size)
-
-    # Inisialisasi Trainer
+    
+    # Training setup
     trainer = Trainer(model, criterion, metrics, optimizer,
                       config=config,
                       data_loader=data_loader,
@@ -78,17 +68,14 @@ def objective(trial, config, fold_id, folds_data):
                       valid_data_loader=valid_data_loader,
                       class_weights=None)
 
-    # Jalankan training
+    # Start training
     trainer.train()
-
-    # Ambil metrik validasi yang diinginkan, seperti F1-Score untuk evaluasi tuning
-    val_metrics = trainer.valid_metrics.result()
-    f1_score = val_metrics.get("f1", 0)  # Ambil F1 score atau 0 jika tidak ada
-
-    return f1_score
+    
+    # Menyelesaikan wandb setelah training selesai
+    wandb.finish()
 
 
-def main():
+if __name__ == '__main__':
     args = argparse.ArgumentParser(description='PyTorch Template')
     args.add_argument('-c', '--config', default="config.json", type=str,
                       help='config file path (default: None)')
@@ -101,127 +88,17 @@ def main():
     args.add_argument('-da', '--np_data_dir', type=str,
                       help='Directory containing numpy files')
 
+
     CustomArgs = collections.namedtuple('CustomArgs', 'flags type target')
     options = []
 
     args2 = args.parse_args()
     fold_id = int(args2.fold_id)
 
-    # Load config
     config = ConfigParser.from_args(args, fold_id, options)
     if "shhs" in args2.np_data_dir:
         folds_data = load_folds_data_shhs(args2.np_data_dir, config["data_loader"]["args"]["num_folds"])
     else:
         folds_data = load_folds_data(args2.np_data_dir, config["data_loader"]["args"]["num_folds"])
 
-    # Setup Optuna Study for Hyperparameter Optimization
-    study = optuna.create_study(direction="maximize")
-    study.optimize(lambda trial: objective(trial, config, fold_id, folds_data), n_trials=20)
-
-
-    # Print the best hyperparameters
-    print("Best hyperparameters:", study.best_params)
-    print("Best F1 Score:", study.best_value)
-
-
-if __name__ == '__main__':
-    main()
-
-
-
-
-# import argparse
-# import collections
-# import numpy as np
-
-# from data_loader.data_loaders import *
-# import model.loss as module_loss
-# import model.metric as module_metric
-# import model.model as module_arch
-# from parse_config import ConfigParser
-# from trainer import Trainer
-# from utils.util import *
-
-# import torch
-# import torch.nn as nn
-# import optuna
-
-# # fix random seeds for reproducibility
-# SEED = 123
-# torch.manual_seed(SEED)
-# torch.backends.cudnn.deterministic = False
-# torch.backends.cudnn.benchmark = False
-# np.random.seed(SEED)
-
-
-# def weights_init_normal(m):
-#     if type(m) == nn.Conv2d:
-#         torch.nn.init.normal_(m.weight.data, 0.0, 0.02)
-#     elif type(m) == nn.Conv1d:
-#         torch.nn.init.normal_(m.weight.data, 0.0, 0.02)
-#     elif type(m) == nn.BatchNorm1d:
-#         torch.nn.init.normal_(m.weight.data, 1.0, 0.02)
-#         torch.nn.init.constant_(m.bias.data, 0.0)
-
-
-# def main(config, fold_id):
-#     batch_size = config["data_loader"]["args"]["batch_size"]
-
-#     logger = config.get_logger('train')
-
-#     # build model architecture, initialize weights, then print to console
-#     model = config.init_obj('arch', module_arch)
-#     model.apply(weights_init_normal)
-#     logger.info(model)
-
-#     # get function handles of loss and metrics
-#     criterion = getattr(module_loss, config['loss'])
-#     metrics = [getattr(module_metric, met) for met in config['metrics']]
-
-#     # build optimizer
-#     trainable_params = filter(lambda p: p.requires_grad, model.parameters())
-
-#     optimizer = config.init_obj('optimizer', torch.optim, trainable_params)
-
-#     data_loader, valid_data_loader, data_count = data_generator_np(folds_data[fold_id][0],
-#                                                                    folds_data[fold_id][1], batch_size)
-#     weights_for_each_class = calc_class_weight(data_count)
-
-#     trainer = Trainer(model, criterion, metrics, optimizer,
-#                       config=config,
-#                       data_loader=data_loader,
-#                       fold_id=fold_id,
-#                       valid_data_loader=valid_data_loader,
-#                       class_weights=weights_for_each_class)
-
-#     trainer.train()
-
-
-# if __name__ == '__main__':
-#     args = argparse.ArgumentParser(description='PyTorch Template')
-#     args.add_argument('-c', '--config', default="config.json", type=str,
-#                       help='config file path (default: None)')
-#     args.add_argument('-r', '--resume', default=None, type=str,
-#                       help='path to latest checkpoint (default: None)')
-#     args.add_argument('-d', '--device', default="0", type=str,
-#                       help='indices of GPUs to enable (default: all)')
-#     args.add_argument('-f', '--fold_id', type=str,
-#                       help='fold_id')
-#     args.add_argument('-da', '--np_data_dir', type=str,
-#                       help='Directory containing numpy files')
-
-
-#     CustomArgs = collections.namedtuple('CustomArgs', 'flags type target')
-#     options = []
-
-#     args2 = args.parse_args()
-#     fold_id = int(args2.fold_id)
-
-#     config = ConfigParser.from_args(args, fold_id, options)
-#     if "shhs" in args2.np_data_dir:
-#         folds_data = load_folds_data_shhs(args2.np_data_dir, config["data_loader"]["args"]["num_folds"])
-#     else:
-#         folds_data = load_folds_data(args2.np_data_dir, config["data_loader"]["args"]["num_folds"])
-
-#     main(config, fold_id)
-
+    main(config, fold_id)
