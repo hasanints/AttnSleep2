@@ -116,7 +116,8 @@ def main():
 
     # Setup Optuna Study for Hyperparameter Optimization
     study = optuna.create_study(direction="maximize")
-    study.optimize(lambda trial: objective(trial, config, fold_id), n_trials=20)
+    study.optimize(lambda trial: objective(trial, config, fold_id, folds_data), n_trials=20)
+
 
     # Print the best hyperparameters
     print("Best hyperparameters:", study.best_params)
