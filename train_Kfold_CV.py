@@ -37,15 +37,16 @@ def objective(trial, config, fold_id):
     Objective function untuk Optuna yang mengoptimalkan kombinasi hyperparameter.
     """
 
-    # Definisikan ruang hyperparameter yang ingin dituning
-    lr = trial.suggest_loguniform('lr', 1e-5, 1e-3)
-    weight_decay = trial.suggest_loguniform('weight_decay', 1e-5, 1e-2)
-    dropout = trial.suggest_float('dropout', 0.1, 0.5)
+    # Perbarui penggunaan suggest_float dengan log=True
+    lr = trial.suggest_float('lr', 1e-5, 1e-3, log=True)
+    weight_decay = trial.suggest_float('weight_decay', 1e-5, 1e-2, log=True)
+
+    # Hapus baris berikut jika model tidak memiliki argumen `dropout`.
+    # dropout = trial.suggest_float('dropout', 0.1, 0.5)
 
     # Terapkan hyperparameter yang dihasilkan oleh Optuna
     config["optimizer"]["args"]["lr"] = lr
     config["optimizer"]["args"]["weight_decay"] = weight_decay
-    config["arch"]["args"]["dropout"] = dropout
 
     batch_size = config["data_loader"]["args"]["batch_size"]
     logger = config.get_logger('train')
