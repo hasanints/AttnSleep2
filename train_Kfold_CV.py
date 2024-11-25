@@ -33,19 +33,19 @@ def weights_init_normal(m):
 
 
 def main(config, fold_id):
-    # Inisialisasi W&B
-    wandb.init(
-        project="nama_proyek_wandb",  # ganti dengan nama proyek
-        config=config._config,        # log seluruh konfigurasi
-        name=f"Fold_{fold_id}"        # beri nama run per fold
-    )
+    # # Inisialisasi W&B
+    # wandb.init(
+    #     project="nama_proyek_wandb",  # ganti dengan nama proyek
+    #     config=config._config,        # log seluruh konfigurasi
+    #     name=f"Fold_{fold_id}"        # beri nama run per fold
+    # )
 
-    # Log konfigurasi tambahan ke W&B
-    wandb.config.update({
-        "batch_size": config["data_loader"]["args"]["batch_size"],
-        "epochs": config["trainer"]["epochs"],
-        "fold_id": fold_id,
-    })
+    # # Log konfigurasi tambahan ke W&B
+    # wandb.config.update({
+    #     "batch_size": config["data_loader"]["args"]["batch_size"],
+    #     "epochs": config["trainer"]["epochs"],
+    #     "fold_id": fold_id,
+    # })
 
     
     batch_size = config["data_loader"]["args"]["batch_size"]
@@ -78,7 +78,7 @@ def main(config, fold_id):
                       class_weights=weights_for_each_class)
 
     trainer.train()
-    wandb.finish()
+    # wandb.finish()
 
 
 if __name__ == '__main__':

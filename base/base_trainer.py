@@ -150,7 +150,7 @@ class BaseTrainer:
         self.logger.info("Saving checkpoint: {} ...".format(filename))
 
         # Log model ke wandb
-        wandb.save(filename)
+        # wandb.save(filename)
 
         if save_best:
             best_path = str(self.checkpoint_dir / 'model_best.pth')
